@@ -1,0 +1,30 @@
+version: "3"
+
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: dashboard
+    ports:
+      - "5432:5432"
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    depends_on:
+      - postgres
+
+  metabase:
+    image: metabase/metabase
+    container_name: metabase
+    restart: always
+    ports:
+      - "3000:3000"
