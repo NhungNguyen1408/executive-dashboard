@@ -1,0 +1,153 @@
+{
+  "name": "Daily Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9185a1a7-6793-4fb1-82c8-2a6c837283d7",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) AS total_orders,\n  COALESCE(SUM(total_amount), 0) AS total_revenue\nFROM orders\nWHERE created_at >= date_trunc('day', NOW()) - INTERVAL '1 day'\n  AND created_at < date_trunc('day', NOW());",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f5c97eed-ff48-4f86-943b-0ba1f7202258",
+      "name": "Get KPI",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO reports (title, type, content, email_status, created_at)\nVALUES (\n  'Bao cao tu dong hang ngay',\n  'daily',\n  'Tong don: {{ $json.total_orders }} | Doanh thu: {{ $json.total_revenue }}',\n  'success',\n  NOW()\n)\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        0
+      ],
+      "id": "7ae85ee0-f446-4258-abe0-c6ff5d931d36",
+      "name": "Insert Report",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO workflow_logs (workflow_name, status, message)\nVALUES (\n  'daily_report',\n  'success',\n  'Da tao bao cao tu dong'\n)\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        624,
+        0
+      ],
+      "id": "b985d4d9-7341-475b-8ad7-c1c45edfa759",
+      "name": "Insert Workflow Log",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        144
+      ],
+      "id": "4adb24d4-200a-48e5-bb81-a6846788b473",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get KPI": {
+      "main": [
+        [
+          {
+            "node": "Insert Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Report": {
+      "main": [
+        [
+          {
+            "node": "Insert Workflow Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "57dd2a53-22c4-4f9c-a1e7-89981e79715d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6a6bfee5e350f964abf885434ff2da90f66666f3f239705b6ef882b3f56712fe"
+  },
+  "id": "tm6dzGqq4ll1bBoB",
+  "tags": []
+}
