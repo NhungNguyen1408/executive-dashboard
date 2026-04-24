@@ -1,0 +1,196 @@
+{
+  "name": "data_sync_orders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "377e88ee-c002-4082-8296-ccc404457de4",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const orders = [];\nconst regions = [\"Hà Nội\", \"Đà Nẵng\", \"TP.HCM\"];\nconst names = [\"Nguyễn Văn A\", \"Trần Thị B\", \"Lê Văn C\"];\n\nconst count = Math.floor(Math.random() * 3) + 1;\n\nfor (let i = 0; i < count; i++) {\n  orders.push({\n    order_code: \"ORD-\" + Date.now() + \"-\" + i,\n    customer_name: names[Math.floor(Math.random() * names.length)],\n    total_amount: Math.floor(Math.random() * 500000) + 100000,\n    status: \"completed\",\n    region: regions[Math.floor(Math.random() * regions.length)],\n    created_at: new Date().toISOString()\n  });\n}\n\nreturn orders.map(o => ({ json: o }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f548ac0e-7090-456e-be5b-66f30072db7e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "total_amount": "={{$json.total_amount}}",
+            "employee_id": "={{$json.employee_id}}",
+            "order_code": "={{$json.order_code}}",
+            "customer_name": "={{$json.customer_name}}",
+            "status": "={{$json.status}}",
+            "region": "={{$json.region}}",
+            "created_at": "={{$json.created_at}}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "order_code",
+              "displayName": "order_code",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_amount",
+              "displayName": "total_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        0
+      ],
+      "id": "e975de3a-5056-4ce5-a476-eba7559af8a0",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ef60a5b7-8209-4f74-b9aa-1b578b4c1343",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6a6bfee5e350f964abf885434ff2da90f66666f3f239705b6ef882b3f56712fe"
+  },
+  "id": "TH8le1BoY7DsP2Ys",
+  "tags": []
+}
