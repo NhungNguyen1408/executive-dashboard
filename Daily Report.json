@@ -3,27 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "triggerAtHour": 7
-            }
-          ]
-        }
-      },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        0,
-        0
-      ],
-      "id": "9185a1a7-6793-4fb1-82c8-2a6c837283d7",
-      "name": "Schedule Trigger"
-    },
-    {
-      "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  COUNT(*) AS total_orders,\n  COALESCE(SUM(total_amount), 0) AS total_revenue\nFROM orders\nWHERE created_at >= date_trunc('day', NOW()) - INTERVAL '1 day'\n  AND created_at < date_trunc('day', NOW());",
+        "query": "SELECT\n  COUNT(*) AS total_orders,\n  COALESCE(SUM(total_amount), 0) AS total_revenue,\n  COALESCE(AVG(total_amount), 0) AS avg_order_value,\n  MAX(total_amount) AS max_order\nFROM orders\nWHERE created_at >= date_trunc('day', NOW()) - INTERVAL '1 day'\n  AND created_at < date_trunc('day', NOW());",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -44,14 +25,14 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO reports (title, type, content, email_status, created_at)\nVALUES (\n  'Bao cao tu dong hang ngay',\n  'daily',\n  'Tong don: {{ $json.total_orders }} | Doanh thu: {{ $json.total_revenue }}',\n  'success',\n  NOW()\n)\nRETURNING *;",
+        "query": "INSERT INTO reports (title, type, content, email_status, created_at)\nVALUES (\n  '{{ $json.report_title }}',\n  '{{ $json.report_type }}',\n  '{{ $json.report_content }}',\n  '{{ $json.email_status }}',\n  NOW()\n)\nRETURNING *;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        416,
-        0
+        1120,
+        192
       ],
       "id": "7ae85ee0-f446-4258-abe0-c6ff5d931d36",
       "name": "Insert Report",
@@ -64,18 +45,51 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2832c041-a946-4dc2-9a15-5e21f11dde0a",
+              "leftValue": "={{ Number($json.total_orders) }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        0
+      ],
+      "id": "e713b5f7-a97e-4835-a6a1-509a8e073f6d",
+      "name": "If"
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO workflow_logs (workflow_name, status, message)\nVALUES (\n  'daily_report',\n  'success',\n  'Da tao bao cao tu dong'\n)\nRETURNING *;",
+        "query": "INSERT INTO workflow_logs (workflow_name, status, message)\nVALUES (\n  'daily_report',\n  'success',\n  'Da tao bao cao, xuat file CSV va gui email thanh cong'\n)\nRETURNING *;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        624,
-        0
+        1392,
+        192
       ],
       "id": "b985d4d9-7341-475b-8ad7-c1c45edfa759",
-      "name": "Insert Workflow Log",
+      "name": "Insert Success Log",
       "credentials": {
         "postgres": {
           "id": "KnPmrS0dgQM3aBAb",
@@ -85,20 +99,269 @@
     },
     {
       "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO workflow_logs (workflow_name, status, message)\nVALUES (\n  'daily_report',\n  'success',\n  'Workflow chay thanh cong nhung khong co don hang, da gui email thong bao no-data'\n)\nRETURNING *;",
         "options": {}
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [
-        560,
-        144
+        1184,
+        720
       ],
-      "id": "4adb24d4-200a-48e5-bb81-a6846788b473",
-      "name": "Edit Fields"
+      "id": "37b4acdf-fd97-4108-88ab-45a7c4a9fdf2",
+      "name": "Insert No Data Log",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhungnguyen.14082005@gmail.com",
+        "toEmail": "nhungnth.23ite@vku.udn.vn",
+        "subject": "={{ $json.email_subject }}",
+        "html": "={{ $json.email_body }}",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1136,
+        -48
+      ],
+      "id": "d417d1d9-5bb2-42cf-90d4-7caced2ae96a",
+      "name": "Send an Email",
+      "webhookId": "baf1a2c0-58b6-48d9-b272-433a60177d99",
+      "credentials": {
+        "smtp": {
+          "id": "1HNJyw2FZkrYcGxD",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  order_code,\n  total_amount,\n  status,\n  created_at\nFROM orders\nWHERE created_at >= date_trunc('day', NOW()) - INTERVAL '1 day'\n  AND created_at < date_trunc('day', NOW())\nORDER BY created_at DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        688,
+        -48
+      ],
+      "id": "c94bf989-c048-4c9a-9a12-d49aba762d79",
+      "name": "Get Orders Detail",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// ===== TẠO CSV =====\nlet csv = 'Order Code,Total Amount (VND),Status,Created At\\n';\n\nfor (const item of items) {\n  const row = item.json;\n  csv += `${row.order_code || ''},${row.total_amount || 0},${row.status || ''},${row.created_at || ''}\\n`;\n}\n\n// ===== TÍNH KPI =====\nconst totalOrders = items.length;\nconst totalRevenue = items.reduce((sum, item) => {\n  return sum + Number(item.json.total_amount || 0);\n}, 0);\n\nconst formattedRevenue = totalRevenue.toLocaleString('vi-VN');\n\n// ===== HTML EMAIL =====\nconst emailHTML = `\n<div style=\"font-family: Arial, sans-serif; max-width:600px; margin:auto; border:1px solid #ddd; border-radius:10px; padding:20px;\">\n  <h2 style=\"color:#1f2937;\">📊 DAILY SALES REPORT</h2>\n\n  <p><b>Ngày báo cáo:</b> ${new Date().toLocaleDateString('vi-VN')}</p>\n\n  <div style=\"background:#f3f4f6; padding:15px; border-radius:8px; margin:15px 0;\">\n    <p>🧾 <b>Tổng đơn:</b> ${totalOrders}</p>\n    <p>💰 <b>Doanh thu:</b> ${formattedRevenue} VND</p>\n  </div>\n\n  <p>📎 File chi tiết được đính kèm dưới dạng CSV, có thể mở bằng Excel.</p>\n\n  <hr/>\n\n  <p style=\"color:gray; font-size:12px;\">\n    ⚙️ Generated automatically by <b>DashAuto Automation System</b>\n  </p>\n</div>\n`;\n\n// ===== TRẢ OUTPUT CHO NODE SAU =====\nreturn [\n  {\n    json: {\n      total_orders: totalOrders,\n      total_revenue: totalRevenue,\n      email_subject: '📊 Daily Sales Report - DashAuto',\n      email_body: emailHTML,\n      report_title: 'Bao cao tu dong hang ngay',\n      report_type: 'daily',\n      report_content: `Tong don: ${totalOrders} | Doanh thu: ${formattedRevenue} VND`,\n      email_status: 'success',\n    },\n    binary: {\n      data: {\n        data: Buffer.from(csv).toString('base64'),\n        mimeType: 'text/csv',\n        fileName: `daily_report_${new Date().toISOString().slice(0, 10)}.csv`,\n      },\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -48
+      ],
+      "id": "9baa2887-33dd-483f-ab69-f3fa93b4af7a",
+      "name": "Create CSV File"
+    },
+    {
+      "parameters": {
+        "jsCode": "  const today = new Date().toLocaleDateString('vi-VN');\n  \n  const emailHTML = `\n  <div style=\"font-family: Arial, sans-serif; max-width:600px; margin:auto; border:1px solid #ddd; border-radius:10px; padding:20px;\">\n    <h2 style=\"color:#92400e;\">⚠️ DAILY REPORT - NO ORDERS</h2>\n  \n    <p><b>Ngày báo cáo:</b> ${today}</p>\n  \n    <div style=\"background:#fff7ed; padding:15px; border-radius:8px; margin:15px 0;\">\n      <p>🧾 <b>Tổng đơn:</b> 0</p>\n      <p>💰 <b>Doanh thu:</b> 0 VND</p>\n      <p>📌 <b>Trạng thái:</b> Không có đơn hàng trong kỳ báo cáo.</p>\n    </div>\n  \n    <p>Hệ thống vẫn ghi nhận báo cáo để quản lý biết workflow đã chạy thành công.</p>\n  \n    <hr/>\n  \n    <p style=\"color:gray; font-size:12px;\">\n      ⚙️ Generated automatically by <b>DashAuto Automation System</b>\n    </p>\n  </div>\n  `;\n  \n  return [\n    {\n      json: {\n        total_orders: 0,\n        total_revenue: 0,\n  \n        email_subject: '⚠️ Daily Report - Không có đơn hàng',\n        email_body: emailHTML,\n  \n        // 🔥 QUAN TRỌNG: phân biệt rõ\n        report_title: '⚠️ Bao cao hang ngay - Khong co don',\n        report_type: 'daily_no_data',\n  \n        report_content: 'Khong co don hang | Tong don: 0 | Doanh thu: 0 VND',\n  \n        email_status: 'success',\n      },\n    },\n  ];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        512
+      ],
+      "id": "e459f178-345e-47c3-8787-3a5dd29ea356",
+      "name": "Prepare No Data Report"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhungnguyen.14082005@gmail.com",
+        "toEmail": "nhungnth.23ite@vku.udn.vn",
+        "subject": "={{ $json.email_subject }}",
+        "html": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        512
+      ],
+      "id": "bde7f498-4dcc-4741-8767-f8fc615a0855",
+      "name": "Send an Email1",
+      "webhookId": "9d137250-6f24-4926-ba29-155a121d343c",
+      "credentials": {
+        "smtp": {
+          "id": "1HNJyw2FZkrYcGxD",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            },
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            },
+            {
+              "field": "months",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9185a1a7-6793-4fb1-82c8-2a6c837283d7",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO reports (title, type, content, email_status, created_at)\nVALUES (\n  '{{ $json.report_title }}',\n  '{{ $json.report_type }}',\n  '{{ $json.report_content }}',\n  '{{ $json.email_status }}',\n  NOW()\n)\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        800,
+        752
+      ],
+      "id": "8391f6d8-886e-4184-8fa7-311af6542f85",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "KnPmrS0dgQM3aBAb",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "pinData": {},
   "connections": {
+    "Get KPI": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Report": {
+      "main": [
+        [
+          {
+            "node": "Insert Success Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get Orders Detail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare No Data Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Orders Detail": {
+      "main": [
+        [
+          {
+            "node": "Create CSV File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CSV File": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Insert Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        []
+      ]
+    },
+    "Prepare No Data Report": {
+      "main": [
+        [
+          {
+            "node": "Send an Email1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email1": {
+      "main": [
+        []
+      ]
+    },
     "Schedule Trigger": {
       "main": [
         [
@@ -110,27 +373,11 @@
         ]
       ]
     },
-    "Get KPI": {
+    "Execute a SQL query": {
       "main": [
         [
           {
-            "node": "Insert Report",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Report": {
-      "main": [
-        [
-          {
-            "node": "Insert Workflow Log",
+            "node": "Insert No Data Log",
             "type": "main",
             "index": 0
           }
@@ -143,7 +390,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "57dd2a53-22c4-4f9c-a1e7-89981e79715d",
+  "versionId": "120880e4-1578-4f6e-a5c5-0b6c730d0bec",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6a6bfee5e350f964abf885434ff2da90f66666f3f239705b6ef882b3f56712fe"
